@@ -5,9 +5,12 @@ import {VRFConsumerBaseV2Plus} from "@chainlink/contracts/vrf/dev/VRFConsumerBas
 import {VRFV2PlusClient} from "@chainlink/contracts/vrf/dev/libraries/VRFV2PlusClient.sol";
 
 contract CoinFlip {
-    // error CoinFlip__AmountMustBeGreaterThanZero();
+    error CoinFlip__AmountMustBeGreaterThanZero();
 
     address private immutable i_owner;
+
+    event Received(address sender, uint256 amount);
+    event FallbackCalled(address sender, uint256 amount);
 
     // address player;
 
@@ -29,19 +32,21 @@ contract CoinFlip {
         i_owner = msg.sender;
     }
 
-    // receive() external payable {
-    //     addFunds(msg.value);
-    // }
+    receive() external payable {
+        addFunds();
+        emit Received(msg.sender, msg.value);
+    }
 
-    // fallback() external payable {
-    //     addFunds(msg.value);
-    // }
+    fallback() external payable {
+        addFunds();
+        emit FallbackCalled(msg.sender, msg.value);
+    }
 
-    // function addFunds(uint256 amount) public payable {
-    //     if (amount == 0) {
-    //         revert CoinFlip__AmountMustBeGreaterThanZero();
-    //     }
-    // }
+    function addFunds() public payable {
+        if (msg.value == 0) {
+            revert CoinFlip__AmountMustBeGreaterThanZero();
+        }
+    }
 
     // function flipCoin() public {}
 
@@ -58,5 +63,9 @@ contract CoinFlip {
 
     function getOwner() public view returns (address) {
         return i_owner;
+    }
+
+    function getBalance() public view returns (uint256) {
+        return address(this).balance;
     }
 }
