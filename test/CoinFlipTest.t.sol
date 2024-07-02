@@ -4,13 +4,21 @@ pragma solidity ^0.8.19;
 import {Test, console} from "forge-std/Test.sol";
 import {CoinFlip} from "src/CoinFlip.sol";
 import {DeployCoinFlip} from "script/DeployCoinFlip.s.sol";
-import {CodeConstants} from "script/HelperConfig.s.sol";
+import {HelperConfig, CodeConstants} from "script/HelperConfig.s.sol";
 
 contract CoinFlipTest is Test, CodeConstants {
     CoinFlip coinFlip;
-    address payable coinFlipAddress;
+    HelperConfig helperConfig;
     DeployCoinFlip deployer;
 
+    address vrfCoordinator;
+    bytes32 keyHash;
+    uint256 subscriptionId;
+    uint32 callbackGasLimit;
+    uint16 requestConfirmations;
+    uint32 numWords;
+
+    address payable coinFlipAddress;
     address public USER = makeAddr("user");
     uint256 public constant STARTING_USER_BALANCE = 10 ether;
 
@@ -22,9 +30,18 @@ contract CoinFlipTest is Test, CodeConstants {
 
     function setUp() public {
         deployer = new DeployCoinFlip();
-        coinFlip = deployer.run();
-        coinFlipAddress = payable(address(coinFlip));
+        (coinFlip, helperConfig) = deployer.run();
         vm.deal(USER, STARTING_USER_BALANCE);
+
+        HelperConfig.NetworkConfig memory config = helperConfig.getConfig();
+        subscriptionId = config.subscriptionId;
+        vrfCoordinator = config.vrfCoordinator;
+        keyHash = config.keyHash;
+        callbackGasLimit = config.callbackGasLimit;
+        requestConfirmations = config.requestConfirmations;
+        numWords = config.numWords;
+
+        coinFlipAddress = payable(address(coinFlip));
         minimumWager = coinFlip.getMinimumWager();
     }
 

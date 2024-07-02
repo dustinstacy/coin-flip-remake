@@ -26,7 +26,7 @@ contract HelperConfig is Script, CodeConstants {
     struct NetworkConfig {
         uint256 subscriptionId;
         address vrfCoordinator;
-        bytes32 gasLane;
+        bytes32 keyHash;
         uint32 callbackGasLimit;
         uint16 requestConfirmations;
         uint32 numWords;
@@ -65,7 +65,7 @@ contract HelperConfig is Script, CodeConstants {
         sepoliaNetworkConfig = NetworkConfig({
             subscriptionId: 71725738945960816049416707497509543650198980936444466996181323752735771573462,
             vrfCoordinator: 0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B,
-            gasLane: 0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae,
+            keyHash: 0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae,
             callbackGasLimit: 500000,
             requestConfirmations: 3,
             numWords: 1,
@@ -80,18 +80,19 @@ contract HelperConfig is Script, CodeConstants {
         }
 
         vm.startBroadcast();
-        VRFCoordinatorV2_5Mock vrfCoordinatorV2mock = new VRFCoordinatorV2_5Mock(
+        VRFCoordinatorV2_5Mock vrfCoordinatorV2_5Mock = new VRFCoordinatorV2_5Mock(
                 MOCK_BASE_FEE,
                 MOCK_GAS_PRICE_LINK,
                 MOCK_WEI_PER_UNIT_LINK
             );
         LinkToken linkToken = new LinkToken();
+        uint256 subscriptionId = vrfCoordinatorV2_5Mock.createSubscription();
         vm.stopBroadcast();
 
         localNetworkConfig = NetworkConfig({
-            subscriptionId: 0,
-            vrfCoordinator: address(vrfCoordinatorV2mock),
-            gasLane: "",
+            subscriptionId: subscriptionId,
+            vrfCoordinator: address(vrfCoordinatorV2_5Mock),
+            keyHash: 0x474e34a077df58807dbe9c96d3c009b23b3c6d0cce433e59bbf5b34f823bc56c,
             callbackGasLimit: 500000,
             requestConfirmations: 3,
             numWords: 1,

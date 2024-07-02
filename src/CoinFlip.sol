@@ -50,7 +50,7 @@ contract CoinFlip is VRFConsumerBaseV2Plus {
         uint32 _callbackGasLimit,
         uint16 _requestConfirmations,
         uint32 _numWords
-    ) VRFConsumerBaseV2Plus(vrfCoordinator) {
+    ) VRFConsumerBaseV2Plus(_vrfCoordinator) {
         i_owner = msg.sender;
         s_coinFlipState = CoinFlipState.OPEN;
         subscriptionId = _subscriptionId;
