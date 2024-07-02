@@ -4,35 +4,7 @@ pragma solidity ^0.8.19;
 import {VRFConsumerBaseV2Plus} from "@chainlink/contracts/vrf/dev/VRFConsumerBaseV2Plus.sol";
 import {VRFV2PlusClient} from "@chainlink/contracts/vrf/dev/libraries/VRFV2PlusClient.sol";
 
-contract CoinFlip {
-    error CoinFlip__AmountMustBeGreaterThanZero();
-    error CoinFlip__MinimumWagerNotMet(uint256 minimumWager, uint256 wager);
-    error CoinFlip__YouMustEnterAValidWager();
-    error CoinFlip__NoBalance();
-    error CoinFlip__TransferFailed();
-    error CoinFlip__YouAreNotTheOne();
-    error CoinFlip__YouInTrouble();
-
-    address private immutable i_owner;
-    uint256 private constant MINIMUM_WAGER = 0.01 ether;
-
-    uint256 private s_totalPlayerBalances;
-    CoinFlipState s_coinFlipState;
-
-    event Received(address sender, uint256 amount);
-    event FallbackCalled(address sender, uint256 amount);
-    event CoinFlipped(address user, uint256 wager, Guesses guess);
-
-    // uint256 s_subscriptionId;
-    // address vrfCoordinator;
-    // bytes32 s_keyHash;
-    // uint32 callbackGasLimit;
-    // uint16 requestConfirmations;
-    // uint32 numWords;
-
-    mapping(address user => uint256 balance) private s_balances;
-    mapping(address user => uint256 wager) private s_currentWagers;
-
+contract CoinFlip is VRFConsumerBaseV2Plus {
     enum CoinFlipState {
         OPEN,
         CALCULATING
@@ -43,7 +15,35 @@ contract CoinFlip {
         TAILS
     }
 
-    constructor() {
+    address private immutable i_owner;
+    uint256 private constant MINIMUM_WAGER = 0.01 ether;
+
+    uint256 private s_totalPlayerBalances;
+    CoinFlipState s_coinFlipState;
+
+    uint256 s_subscriptionId;
+    address vrfCoordinator;
+    bytes32 s_keyHash;
+    uint32 callbackGasLimit;
+    uint16 requestConfirmations;
+    uint32 numWords;
+
+    mapping(address user => uint256 balance) private s_balances;
+    mapping(address user => uint256 wager) private s_currentWagers;
+
+    event Received(address sender, uint256 amount);
+    event FallbackCalled(address sender, uint256 amount);
+    event CoinFlipped(address user, uint256 wager, Guesses guess);
+
+    error CoinFlip__AmountMustBeGreaterThanZero();
+    error CoinFlip__MinimumWagerNotMet(uint256 minimumWager, uint256 wager);
+    error CoinFlip__YouMustEnterAValidWager();
+    error CoinFlip__NoBalance();
+    error CoinFlip__TransferFailed();
+    error CoinFlip__YouAreNotTheOne();
+    error CoinFlip__YouInTrouble();
+
+    constructor() VRFConsumerBaseV2Plus(vrfCoordinator) {
         i_owner = msg.sender;
         s_coinFlipState = CoinFlipState.OPEN;
     }
@@ -147,10 +147,10 @@ contract CoinFlip {
         }
     }
 
-    // function fulfillRandomWords(
-    //     uint256 /* requestId */,
-    //     uint256[] calldata randomWords
-    // ) internal override {}
+    function fulfillRandomWords(
+        uint256 requestId,
+        uint256[] calldata randomWords
+    ) internal override {}
 
     function getOwner() public view returns (address) {
         return i_owner;
