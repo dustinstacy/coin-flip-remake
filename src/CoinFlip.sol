@@ -6,13 +6,16 @@ import {VRFV2PlusClient} from "@chainlink/contracts/vrf/dev/libraries/VRFV2PlusC
 
 contract CoinFlip {
     error CoinFlip__AmountMustBeGreaterThanZero();
+    error CoinFlip__MinimumWagerNotMet(uint256 minimumWager, uint256 wager);
 
     address private immutable i_owner;
+    uint256 private constant MINIMUM_WAGER = 0.01 ether;
 
     event Received(address sender, uint256 amount);
     event FallbackCalled(address sender, uint256 amount);
+    event CoinFlipped(address user, uint256 wager);
 
-    // address player;
+    // address user;
 
     // uint256 s_subscriptionId;
     // address vrfCoordinator;
@@ -21,7 +24,7 @@ contract CoinFlip {
     // uint16 requestConfirmations;
     // uint32 numWords;
 
-    // mapping(address player => uint256 balance) private s_balances;
+    mapping(address user => uint256 balance) private s_balances;
 
     // enum CoinFlipState {
     //     OPEN,
@@ -48,7 +51,13 @@ contract CoinFlip {
         }
     }
 
-    // function flipCoin() public {}
+    function flipCoin(address user, uint256 wager) public {
+        if (wager < MINIMUM_WAGER) {
+            revert CoinFlip__MinimumWagerNotMet(MINIMUM_WAGER, wager);
+        }
+        s_balances[user] = s_balances[user] + wager;
+        emit CoinFlipped(user, wager);
+    }
 
     // function fulfillRandomWords(
     //     uint256 /* requestId */,
@@ -67,5 +76,13 @@ contract CoinFlip {
 
     function getBalance() public view returns (uint256) {
         return address(this).balance;
+    }
+
+    function getUserBalance(address user) public view returns (uint256) {
+        return s_balances[user];
+    }
+
+    function getMinimumWager() public pure returns (uint256) {
+        return MINIMUM_WAGER;
     }
 }
