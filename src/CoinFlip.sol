@@ -21,12 +21,12 @@ contract CoinFlip is VRFConsumerBaseV2Plus {
     uint256 private s_totalPlayerBalances;
     CoinFlipState s_coinFlipState;
 
-    uint256 s_subscriptionId;
-    address s_vrfCoordinator;
-    bytes32 s_keyHash;
-    uint32 s_callbackGasLimit;
-    uint16 s_requestConfirmations;
-    uint32 s_numWords;
+    uint256 subscriptionId;
+    address vrfCoordinator;
+    bytes32 keyHash;
+    uint32 callbackGasLimit;
+    uint16 requestConfirmations;
+    uint32 numWords;
 
     mapping(address user => uint256 balance) private s_balances;
     mapping(address user => uint256 wager) private s_currentWagers;
@@ -44,21 +44,21 @@ contract CoinFlip is VRFConsumerBaseV2Plus {
     error CoinFlip__YouInTrouble();
 
     constructor(
-        uint256 subscriptionId,
-        address vrfCoordinator,
-        bytes32 keyHash,
-        uint32 callbackGasLimit,
-        uint16 requestConfirmations,
-        uint32 numWords
+        uint256 _subscriptionId,
+        address _vrfCoordinator,
+        bytes32 _keyHash,
+        uint32 _callbackGasLimit,
+        uint16 _requestConfirmations,
+        uint32 _numWords
     ) VRFConsumerBaseV2Plus(vrfCoordinator) {
         i_owner = msg.sender;
         s_coinFlipState = CoinFlipState.OPEN;
-        s_subscriptionId = subscriptionId;
-        s_vrfCoordinator = vrfCoordinator;
-        s_keyHash = keyHash;
-        s_callbackGasLimit = callbackGasLimit;
-        s_requestConfirmations = requestConfirmations;
-        s_numWords = numWords;
+        subscriptionId = _subscriptionId;
+        vrfCoordinator = _vrfCoordinator;
+        keyHash = _keyHash;
+        callbackGasLimit = _callbackGasLimit;
+        requestConfirmations = _requestConfirmations;
+        numWords = _numWords;
     }
 
     receive() external payable {

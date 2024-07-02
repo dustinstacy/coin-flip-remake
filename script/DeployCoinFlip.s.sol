@@ -11,7 +11,14 @@ contract DeployCoinFlip is Script {
         HelperConfig.NetworkConfig memory config = helperConfig.getConfig();
 
         vm.startBroadcast(config.account);
-        coinFlip = new CoinFlip();
+        coinFlip = new CoinFlip(
+            config.subscriptionId,
+            config.vrfCoordinator,
+            config.gasLane,
+            config.callbackGasLimit,
+            config.requestConfirmations,
+            config.numWords
+        );
         vm.stopBroadcast();
 
         return (coinFlip);
