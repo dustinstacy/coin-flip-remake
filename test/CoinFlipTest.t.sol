@@ -264,4 +264,8 @@ contract CoinFlipTest is Test, CodeConstants {
         uint256 userEndingBalance = coinFlip.getUserBalance(USER);
         assert(userEndingBalance == userStartingBalance - minimumWager);
     }
+
+    /*//////////////////////////////////////////////////////////////
+                             USER WITHDRAW
+    //////////////////////////////////////////////////////////////*/
 }

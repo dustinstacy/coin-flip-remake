@@ -8,10 +8,15 @@ contract CoinFlip {
     error CoinFlip__AmountMustBeGreaterThanZero();
     error CoinFlip__MinimumWagerNotMet(uint256 minimumWager, uint256 wager);
     error CoinFlip__YouMustEnterAValidWager();
+    error CoinFlip__NoBalance();
+    error CoinFlip__TransferFailed();
+    error CoinFlip__YouAreNotTheOne();
+    error CoinFlip__YouInTrouble();
 
     address private immutable i_owner;
     uint256 private constant MINIMUM_WAGER = 0.01 ether;
 
+    uint256 private s_totalPlayerBalances;
     CoinFlipState s_coinFlipState;
 
     event Received(address sender, uint256 amount);
@@ -96,7 +101,7 @@ contract CoinFlip {
     }
 
     function handleResult(bool winner) private {
-        if (winner == true) {
+        if (winner) {
             chickenDinner();
         } else {
             thanksForTheContributions();
@@ -104,25 +109,43 @@ contract CoinFlip {
     }
 
     function chickenDinner() public {
-        s_balances[msg.sender] =
-            s_balances[msg.sender] +
-            s_currentWagers[msg.sender];
+        uint256 currentWager = s_currentWagers[msg.sender];
+        s_currentWagers[msg.sender] = 0;
+        s_balances[msg.sender] = s_balances[msg.sender] + currentWager;
+        s_totalPlayerBalances = s_totalPlayerBalances + (currentWager * 2);
     }
 
     function thanksForTheContributions() public {
-        s_balances[msg.sender] =
-            s_balances[msg.sender] -
-            s_currentWagers[msg.sender];
+        uint256 currentWager = s_currentWagers[msg.sender];
+        s_currentWagers[msg.sender] = 0;
+        s_balances[msg.sender] = s_balances[msg.sender] - currentWager;
+    }
+
+    function userWithdraw() public {
+        uint256 balance = s_balances[msg.sender];
+        if (balance <= 0) {
+            revert CoinFlip__NoBalance();
+        }
+        s_balances[msg.sender] = 0;
+        (bool success, ) = payable(msg.sender).call{value: balance}("");
+        if (!success) {
+            revert CoinFlip__TransferFailed();
+        }
+    }
+
+    function ownerWithdraw(uint256 amountRequested) public {
+        if (msg.sender != i_owner) {
+            revert CoinFlip__YouAreNotTheOne();
+        }
+        if (address(this).balance - s_totalPlayerBalances <= 0) {
+            revert CoinFlip__YouInTrouble();
+        }
     }
 
     // function fulfillRandomWords(
     //     uint256 /* requestId */,
     //     uint256[] calldata randomWords
     // ) internal override {}
-
-    // function withdrawWinnings() public {}
-
-    // function withdraw() public {}
 
     function getOwner() public view returns (address) {
         return i_owner;
@@ -146,5 +169,9 @@ contract CoinFlip {
 
     function getMinimumWager() public pure returns (uint256) {
         return MINIMUM_WAGER;
+    }
+
+    function getTotalPlayerBalances() public view returns (uint256) {
+        return s_totalPlayerBalances;
     }
 }
