@@ -127,6 +127,7 @@ contract CoinFlip {
             revert CoinFlip__NoBalance();
         }
         s_balances[msg.sender] = 0;
+        s_currentWagers[msg.sender] = 0;
         (bool success, ) = payable(msg.sender).call{value: balance}("");
         if (!success) {
             revert CoinFlip__TransferFailed();
@@ -137,8 +138,12 @@ contract CoinFlip {
         if (msg.sender != i_owner) {
             revert CoinFlip__YouAreNotTheOne();
         }
-        if (address(this).balance - s_totalPlayerBalances <= 0) {
+        if (address(this).balance - amountRequested < s_totalPlayerBalances) {
             revert CoinFlip__YouInTrouble();
+        }
+        (bool success, ) = payable(msg.sender).call{value: amountRequested}("");
+        if (!success) {
+            revert CoinFlip__TransferFailed();
         }
     }
 

@@ -28,6 +28,12 @@ contract CoinFlipTest is Test, CodeConstants {
         minimumWager = coinFlip.getMinimumWager();
     }
 
+    modifier wagerEntered() {
+        vm.prank(USER);
+        coinFlip.enterWager(minimumWager);
+        _;
+    }
+
     /*//////////////////////////////////////////////////////////////
                               CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
@@ -173,13 +179,11 @@ contract CoinFlipTest is Test, CodeConstants {
         coinFlip.guessTails();
     }
 
-    function testGuessHeadsEmitsCoinFlippedEventWithHeadsAsGuess() public {
-        // Arrange
-        vm.prank(USER);
-        coinFlip.enterWager(minimumWager);
-
+    function testGuessHeadsEmitsCoinFlippedEventWithHeadsAsGuess()
+        public
+        wagerEntered
+    {
         // Act
-
         vm.expectEmit(false, false, false, false, coinFlipAddress);
         emit CoinFlipped(
             USER,
@@ -190,13 +194,11 @@ contract CoinFlipTest is Test, CodeConstants {
         coinFlip.guessHeads();
     }
 
-    function testGuessTailsEmitsCoinFlippedEventWithTailsAsGuess() public {
-        // Arrange
-        vm.prank(USER);
-        coinFlip.enterWager(minimumWager);
-
+    function testGuessTailsEmitsCoinFlippedEventWithTailsAsGuess()
+        public
+        wagerEntered
+    {
         // Act
-
         vm.expectEmit(false, false, false, false, coinFlipAddress);
         emit CoinFlipped(
             USER,
@@ -211,9 +213,10 @@ contract CoinFlipTest is Test, CodeConstants {
                              CHICKEN DINNER
     //////////////////////////////////////////////////////////////*/
 
-    function testChickenDinnerAddsTheUsersCurrentWagerToTheirBalance() public {
-        vm.prank(USER);
-        coinFlip.enterWager(minimumWager);
+    function testChickenDinnerAddsTheUsersCurrentWagerToTheirBalance()
+        public
+        wagerEntered
+    {
         uint256 userStartingBalance = coinFlip.getUserBalance(USER);
 
         vm.prank(USER);
@@ -228,9 +231,8 @@ contract CoinFlipTest is Test, CodeConstants {
 
     function testThanksForTheContributionsDeductsTheUsersCurrentWagerFromTheirBalance()
         public
+        wagerEntered
     {
-        vm.prank(USER);
-        coinFlip.enterWager(minimumWager);
         uint256 userStartingBalance = coinFlip.getUserBalance(USER);
 
         vm.prank(USER);
@@ -243,20 +245,22 @@ contract CoinFlipTest is Test, CodeConstants {
                            FAKE INTERGRATION
     //////////////////////////////////////////////////////////////*/
 
-    function testUserBalanceIncreasesWhenGuessingCorrectly() public {
-        vm.prank(USER);
-        coinFlip.enterWager(minimumWager);
+    function testUserBalanceIncreasesWhenGuessingCorrectly()
+        public
+        wagerEntered
+    {
         uint256 userStartingBalance = coinFlip.getUserBalance(USER);
 
         vm.prank(USER);
-        coinFlip.guessHeads();
+        coinFlip.guessTails();
         uint256 userEndingBalance = coinFlip.getUserBalance(USER);
-        assert(userEndingBalance == userStartingBalance - minimumWager);
+        assert(userEndingBalance == userStartingBalance + minimumWager);
     }
 
-    function testUserBalanceDecreasesWhenGuessingIncorrectly() public {
-        vm.prank(USER);
-        coinFlip.enterWager(minimumWager);
+    function testUserBalanceDecreasesWhenGuessingIncorrectly()
+        public
+        wagerEntered
+    {
         uint256 userStartingBalance = coinFlip.getUserBalance(USER);
 
         vm.prank(USER);
@@ -268,4 +272,74 @@ contract CoinFlipTest is Test, CodeConstants {
     /*//////////////////////////////////////////////////////////////
                              USER WITHDRAW
     //////////////////////////////////////////////////////////////*/
+
+    function testUserWithdrawRevertsIfBalanceIsZero() public {
+        vm.prank(USER);
+
+        vm.expectRevert(CoinFlip.CoinFlip__NoBalance.selector);
+        coinFlip.userWithdraw();
+    }
+
+    function testUserWithdrawSetsTheUsersBalanceAndCurrentWagerToZero()
+        public
+        wagerEntered
+    {
+        coinFlip.addFunds{value: 10 ether}();
+        vm.prank(USER);
+        coinFlip.userWithdraw();
+
+        assert(coinFlip.getUserBalance(USER) == 0);
+        assert(coinFlip.getUserCurrentWager(USER) == 0);
+    }
+
+    function testUserWithdrawSendsTheProperAmount() public {
+        coinFlip.addFunds{value: 10 ether}();
+        vm.prank(USER);
+        uint256 startingUserAddressBalance = address(USER).balance;
+        coinFlip.enterWager(minimumWager);
+
+        vm.prank(USER);
+        coinFlip.userWithdraw();
+
+        uint256 endingUserAddressBalance = address(USER).balance;
+        assert(
+            endingUserAddressBalance ==
+                startingUserAddressBalance + minimumWager
+        );
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             OWNER WITHDRAW
+    //////////////////////////////////////////////////////////////*/
+
+    function testOwnerWithdrawCanOnlyBeCalledByTheOwner() public {
+        vm.prank(USER);
+
+        vm.expectRevert(CoinFlip.CoinFlip__YouAreNotTheOne.selector);
+        coinFlip.ownerWithdraw(10000 ether);
+    }
+
+    function testOwnerWithdrawRevertsWhenBalanceDoesNotExceedPlayerBalances()
+        public
+        wagerEntered
+    {
+        coinFlip.addFunds{value: 0.0001 ether}();
+
+        vm.startPrank(USER);
+        coinFlip.guessTails();
+        vm.stopPrank();
+
+        vm.prank(FOUNDRY_DEFAULT_SENDER);
+        vm.expectRevert(CoinFlip.CoinFlip__YouInTrouble.selector);
+        coinFlip.ownerWithdraw(.0001 ether);
+    }
+
+    function testOwnerWithdrawWorkIfEnoughFundsAreAvailableAndIsCalledByOwner()
+        public
+    {
+        coinFlip.addFunds{value: 10 ether}();
+        vm.prank(FOUNDRY_DEFAULT_SENDER);
+        coinFlip.ownerWithdraw(10 ether);
+        assert(coinFlip.getBalance() == 0);
+    }
 }
