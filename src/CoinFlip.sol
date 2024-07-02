@@ -22,11 +22,11 @@ contract CoinFlip is VRFConsumerBaseV2Plus {
     CoinFlipState s_coinFlipState;
 
     uint256 s_subscriptionId;
-    address vrfCoordinator;
+    address s_vrfCoordinator;
     bytes32 s_keyHash;
-    uint32 callbackGasLimit;
-    uint16 requestConfirmations;
-    uint32 numWords;
+    uint32 s_callbackGasLimit;
+    uint16 s_requestConfirmations;
+    uint32 s_numWords;
 
     mapping(address user => uint256 balance) private s_balances;
     mapping(address user => uint256 wager) private s_currentWagers;
@@ -43,9 +43,22 @@ contract CoinFlip is VRFConsumerBaseV2Plus {
     error CoinFlip__YouAreNotTheOne();
     error CoinFlip__YouInTrouble();
 
-    constructor() VRFConsumerBaseV2Plus(vrfCoordinator) {
+    constructor(
+        uint256 subscriptionId,
+        address vrfCoordinator,
+        bytes32 keyHash,
+        uint32 callbackGasLimit,
+        uint16 requestConfirmations,
+        uint32 numWords
+    ) VRFConsumerBaseV2Plus(vrfCoordinator) {
         i_owner = msg.sender;
         s_coinFlipState = CoinFlipState.OPEN;
+        s_subscriptionId = subscriptionId;
+        s_vrfCoordinator = vrfCoordinator;
+        s_keyHash = keyHash;
+        s_callbackGasLimit = callbackGasLimit;
+        s_requestConfirmations = requestConfirmations;
+        s_numWords = numWords;
     }
 
     receive() external payable {
