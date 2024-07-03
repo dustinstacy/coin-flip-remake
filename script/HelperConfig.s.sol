@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {Script} from "forge-std/Script.sol";
-import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
-import {LinkToken} from "test/mocks/LinkToken.sol";
+import { Script } from 'forge-std/Script.sol';
+import { VRFCoordinatorV2_5Mock } from '@chainlink/contracts/vrf/mocks/VRFCoordinatorV2_5Mock.sol';
+import { LinkToken } from 'test/mocks/LinkToken.sol';
 
 abstract contract CodeConstants {
     /* VRF Mock Values*/
@@ -16,8 +16,7 @@ abstract contract CodeConstants {
     uint256 public LOCAL_CHAIN_ID = 31337;
 
     /* Addresses */
-    address public FOUNDRY_DEFAULT_SENDER =
-        0x1804c8AB1F12E6bbf3894d4083f33e07309d1f38;
+    address public FOUNDRY_DEFAULT_SENDER = 0x1804c8AB1F12E6bbf3894d4083f33e07309d1f38;
 }
 
 contract HelperConfig is Script, CodeConstants {
@@ -45,9 +44,7 @@ contract HelperConfig is Script, CodeConstants {
         return getConfigByChainId(block.chainid);
     }
 
-    function getConfigByChainId(
-        uint256 chainId
-    ) public returns (NetworkConfig memory) {
+    function getConfigByChainId(uint256 chainId) public returns (NetworkConfig memory) {
         if (networkConfigs[chainId].vrfCoordinator != address(0)) {
             return networkConfigs[chainId];
         } else if (chainId == LOCAL_CHAIN_ID) {
@@ -57,13 +54,9 @@ contract HelperConfig is Script, CodeConstants {
         }
     }
 
-    function getSepoliaConfig()
-        public
-        pure
-        returns (NetworkConfig memory sepoliaNetworkConfig)
-    {
+    function getSepoliaConfig() public pure returns (NetworkConfig memory sepoliaNetworkConfig) {
         sepoliaNetworkConfig = NetworkConfig({
-            subscriptionId: 71725738945960816049416707497509543650198980936444466996181323752735771573462,
+            subscriptionId: 0,
             vrfCoordinator: 0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B,
             keyHash: 0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae,
             callbackGasLimit: 500000,
@@ -81,10 +74,10 @@ contract HelperConfig is Script, CodeConstants {
 
         vm.startBroadcast();
         VRFCoordinatorV2_5Mock vrfCoordinatorV2_5Mock = new VRFCoordinatorV2_5Mock(
-                MOCK_BASE_FEE,
-                MOCK_GAS_PRICE_LINK,
-                MOCK_WEI_PER_UNIT_LINK
-            );
+            MOCK_BASE_FEE,
+            MOCK_GAS_PRICE_LINK,
+            MOCK_WEI_PER_UNIT_LINK
+        );
         LinkToken linkToken = new LinkToken();
         uint256 subscriptionId = vrfCoordinatorV2_5Mock.createSubscription();
         vm.stopBroadcast();

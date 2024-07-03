@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {VRFConsumerBaseV2Plus} from "@chainlink/contracts/vrf/dev/VRFConsumerBaseV2Plus.sol";
-import {VRFV2PlusClient} from "@chainlink/contracts/vrf/dev/libraries/VRFV2PlusClient.sol";
+import { VRFConsumerBaseV2Plus } from '@chainlink/contracts/vrf/dev/VRFConsumerBaseV2Plus.sol';
+import { VRFV2PlusClient } from '@chainlink/contracts/vrf/dev/libraries/VRFV2PlusClient.sol';
 
 contract CoinFlip is VRFConsumerBaseV2Plus {
     enum CoinFlipState {
@@ -115,22 +115,13 @@ contract CoinFlip is VRFConsumerBaseV2Plus {
                 requestConfirmations: requestConfirmations,
                 callbackGasLimit: callbackGasLimit,
                 numWords: numWords,
-                extraArgs: VRFV2PlusClient._argsToBytes(
-                    VRFV2PlusClient.ExtraArgsV1({nativePayment: false})
-                )
+                extraArgs: VRFV2PlusClient._argsToBytes(VRFV2PlusClient.ExtraArgsV1({ nativePayment: false }))
             })
         );
-        emit CoinFlipped(
-            msg.sender,
-            currentWagers[msg.sender].amount,
-            currentWagers[msg.sender].guess
-        );
+        emit CoinFlipped(msg.sender, currentWagers[msg.sender].amount, currentWagers[msg.sender].guess);
     }
 
-    function fulfillRandomWords(
-        uint256 /* requestId */,
-        uint256[] calldata randomWords
-    ) internal override {
+    function fulfillRandomWords(uint256 /* requestId */, uint256[] calldata randomWords) internal override {
         uint256 result = randomWords[0] % 2;
         if (uint256(currentWagers[msg.sender].guess) == result) {
             chickenDinner();
@@ -161,7 +152,7 @@ contract CoinFlip is VRFConsumerBaseV2Plus {
         }
         balances[msg.sender] = 0;
         currentWagers[msg.sender].amount = 0;
-        (bool success, ) = payable(msg.sender).call{value: balance}("");
+        (bool success, ) = payable(msg.sender).call{ value: balance }('');
         if (!success) {
             revert CoinFlip__TransferFailed();
         }
@@ -174,7 +165,7 @@ contract CoinFlip is VRFConsumerBaseV2Plus {
         if (address(this).balance - amountRequested < totalPlayerBalances) {
             revert CoinFlip__YouInTrouble();
         }
-        (bool success, ) = payable(msg.sender).call{value: amountRequested}("");
+        (bool success, ) = payable(msg.sender).call{ value: amountRequested }('');
         if (!success) {
             revert CoinFlip__TransferFailed();
         }
