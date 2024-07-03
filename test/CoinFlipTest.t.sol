@@ -5,6 +5,8 @@ import { Test, console } from 'forge-std/Test.sol';
 import { CoinFlip } from 'src/CoinFlip.sol';
 import { DeployCoinFlip } from 'script/DeployCoinFlip.s.sol';
 import { HelperConfig, CodeConstants } from 'script/HelperConfig.s.sol';
+import { LinkToken } from './mocks/LinkToken.sol';
+import { VRFCoordinatorV2_5Mock } from '@chainlink/contracts/vrf/mocks/VRFCoordinatorV2_5Mock.sol';
 
 contract CoinFlipTest is Test, CodeConstants {
     CoinFlip coinFlip;
@@ -17,10 +19,12 @@ contract CoinFlipTest is Test, CodeConstants {
     uint32 callbackGasLimit;
     uint16 requestConfirmations;
     uint32 numWords;
+    LinkToken link;
 
     address payable coinFlipAddress;
     address public USER = makeAddr('user');
     uint256 public constant STARTING_USER_BALANCE = 10 ether;
+    uint256 public constant LINK_BALANCE = 100 ether;
 
     uint256 public minimumWager;
 
@@ -58,9 +62,17 @@ contract CoinFlipTest is Test, CodeConstants {
         callbackGasLimit = config.callbackGasLimit;
         requestConfirmations = config.requestConfirmations;
         numWords = config.numWords;
-
+        link = LinkToken(config.link);
         coinFlipAddress = payable(address(coinFlip));
         minimumWager = coinFlip.getMinimumWager();
+
+        vm.startPrank(msg.sender);
+        if (block.chainid == LOCAL_CHAIN_ID) {
+            link.mint(msg.sender, LINK_BALANCE);
+            VRFCoordinatorV2_5Mock(vrfCoordinator).fundSubscription(subscriptionId, LINK_BALANCE);
+            link.approve(vrfCoordinator, LINK_BALANCE);
+            vm.stopPrank();
+        }
     }
 
     /*//////////////////////////////////////////////////////////////

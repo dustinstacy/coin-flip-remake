@@ -113,7 +113,7 @@ contract CoinFlip is VRFConsumerBaseV2Plus {
     function placeWager() public payable checkWager {
         currentWagers[msg.sender].amount = msg.value;
         coinFlipState = CoinFlipState.CALCULATING;
-        // flipCoin();
+        flipCoin();
     }
 
     function flipCoin() internal {
