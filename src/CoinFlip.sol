@@ -64,8 +64,8 @@ contract CoinFlip is VRFConsumerBaseV2Plus {
         if (coinFlipState != CoinFlipState.OPEN) {
             revert CoinFlip__StillCalculatingResults();
         }
-        if (msg.value < MINIMUM_WAGER) {
-            revert CoinFlip__MinimumWagerNotMet(MINIMUM_WAGER, msg.value);
+        if (currentWagers[msg.sender].amount < MINIMUM_WAGER) {
+            revert CoinFlip__MinimumWagerNotMet(MINIMUM_WAGER, currentWagers[msg.sender].amount);
         }
         _;
     }
@@ -112,15 +112,13 @@ contract CoinFlip is VRFConsumerBaseV2Plus {
         currentWagers[msg.sender].guess = Guesses.TAILS;
     }
 
-    function placeWager() public payable checkWager {
+    function placeWager() public payable {
         currentWagers[msg.sender].amount = msg.value;
-        coinFlipState = CoinFlipState.CALCULATING;
-        emit CoinFlipped(msg.sender, currentWagers[msg.sender].amount, currentWagers[msg.sender].guess);
-        flipCoin();
+        balances[msg.sender] = balances[msg.sender] + msg.value;
     }
 
-    function flipCoin() internal {
-        uint256 requestId = s_vrfCoordinator.requestRandomWords(
+    function flipCoin() public checkWager returns (uint256 requestId) {
+        requestId = s_vrfCoordinator.requestRandomWords(
             VRFV2PlusClient.RandomWordsRequest({
                 keyHash: keyHash,
                 subId: subscriptionId,
@@ -130,24 +128,20 @@ contract CoinFlip is VRFConsumerBaseV2Plus {
                 extraArgs: VRFV2PlusClient._argsToBytes(VRFV2PlusClient.ExtraArgsV1({ nativePayment: false }))
             })
         );
-
+        emit CoinFlipped(msg.sender, currentWagers[msg.sender].amount, currentWagers[msg.sender].guess);
+        coinFlipState = CoinFlipState.CALCULATING;
         requestIdToUser[requestId] = msg.sender;
     }
 
     function fulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal override {
         lastResult = (randomWords[0] % 2) + 1;
-        handleResult(requestId, lastResult);
-    }
-
-    function handleResult(uint256 requestId, uint256 result) public {
         address user = requestIdToUser[requestId];
         uint256 currentWager = currentWagers[user].amount;
         Guesses currentGuess = currentWagers[user].guess;
         currentWagers[user].amount = 0;
         currentWagers[user].guess = Guesses.NONE;
-
-        if (uint256(currentGuess) == result) {
-            balances[user] = balances[user] + (currentWager * 2);
+        if (uint256(currentGuess) == lastResult) {
+            balances[user] = balances[user] + currentWager;
             totalPlayerBalances = totalPlayerBalances + (currentWager * 2);
         }
         coinFlipState = CoinFlipState.OPEN;
