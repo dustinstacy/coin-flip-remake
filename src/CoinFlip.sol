@@ -11,6 +11,7 @@ contract CoinFlip is VRFConsumerBaseV2Plus {
     }
 
     enum Guesses {
+        NONE,
         HEADS,
         TAILS
     }
@@ -24,7 +25,6 @@ contract CoinFlip is VRFConsumerBaseV2Plus {
     uint256 private constant MINIMUM_WAGER = 0.01 ether;
     uint256 private totalPlayerBalances;
     CoinFlipState coinFlipState;
-
     uint256 subscriptionId;
     address vrfCoordinator;
     bytes32 keyHash;
@@ -46,6 +46,27 @@ contract CoinFlip is VRFConsumerBaseV2Plus {
     error CoinFlip__TransferFailed();
     error CoinFlip__YouAreNotTheOne();
     error CoinFlip__YouInTrouble();
+    error CoinFlip__PleaseMakeAGuessFirst();
+
+    modifier onlyOnwer() {
+        if (msg.sender != i_owner) {
+            revert CoinFlip__YouAreNotTheOne();
+        }
+        _;
+    }
+
+    modifier checkWager() {
+        if (currentWagers[msg.sender].guess == Guesses.NONE) {
+            revert CoinFlip__PleaseMakeAGuessFirst();
+        }
+        if (coinFlipState != CoinFlipState.OPEN) {
+            revert CoinFlip__StillCalculatingResults();
+        }
+        if (msg.value < MINIMUM_WAGER) {
+            revert CoinFlip__MinimumWagerNotMet(MINIMUM_WAGER, msg.value);
+        }
+        _;
+    }
 
     constructor(
         uint256 _subscriptionId,
@@ -81,28 +102,16 @@ contract CoinFlip is VRFConsumerBaseV2Plus {
         }
     }
 
-    function guessHeads() public payable {
-        if (coinFlipState != CoinFlipState.OPEN) {
-            revert CoinFlip__StillCalculatingResults();
-        }
-        if (msg.value < MINIMUM_WAGER) {
-            revert CoinFlip__MinimumWagerNotMet(MINIMUM_WAGER, msg.value);
-        }
-        currentWagers[msg.sender].amount = msg.value;
+    function guessHeads() public {
         currentWagers[msg.sender].guess = Guesses.HEADS;
-        coinFlipState = CoinFlipState.CALCULATING;
-        // flipCoin();
     }
 
-    function guessTails() public payable {
-        if (coinFlipState != CoinFlipState.OPEN) {
-            revert CoinFlip__StillCalculatingResults();
-        }
-        if (msg.value < MINIMUM_WAGER) {
-            revert CoinFlip__MinimumWagerNotMet(MINIMUM_WAGER, msg.value);
-        }
-        currentWagers[msg.sender].amount = msg.value;
+    function guessTails() public {
         currentWagers[msg.sender].guess = Guesses.TAILS;
+    }
+
+    function placeWager() public payable checkWager {
+        currentWagers[msg.sender].amount = msg.value;
         coinFlipState = CoinFlipState.CALCULATING;
         // flipCoin();
     }
@@ -122,7 +131,7 @@ contract CoinFlip is VRFConsumerBaseV2Plus {
     }
 
     function fulfillRandomWords(uint256 /* requestId */, uint256[] calldata randomWords) internal override {
-        uint256 result = randomWords[0] % 2;
+        uint256 result = (randomWords[0] % 2) + 1;
         if (uint256(currentWagers[msg.sender].guess) == result) {
             chickenDinner();
         } else {
@@ -158,10 +167,7 @@ contract CoinFlip is VRFConsumerBaseV2Plus {
         }
     }
 
-    function ownerWithdraw(uint256 amountRequested) public {
-        if (msg.sender != i_owner) {
-            revert CoinFlip__YouAreNotTheOne();
-        }
+    function ownerWithdraw(uint256 amountRequested) public onlyOnwer {
         if (address(this).balance - amountRequested < totalPlayerBalances) {
             revert CoinFlip__YouInTrouble();
         }
