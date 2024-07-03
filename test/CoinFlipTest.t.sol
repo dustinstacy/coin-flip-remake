@@ -359,4 +359,9 @@ contract CoinFlipTest is Test, CodeConstants {
         coinFlip.ownerWithdraw(10 ether);
         assert(coinFlip.getBalance() == 0);
     }
+
+    function test() public {
+        vm.prank(USER);
+        console.log(coinFlip.getUserCurrentWager(USER));
+    }
 }
