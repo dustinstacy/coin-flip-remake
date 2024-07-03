@@ -41,6 +41,7 @@ contract CoinFlip is VRFConsumerBaseV2Plus {
 
     error CoinFlip__AmountMustBeGreaterThanZero();
     error CoinFlip__MinimumWagerNotMet(uint256 minimumWager, uint256 wager);
+    error CoinFlip__StillCalculatingResults();
     error CoinFlip__NoBalance();
     error CoinFlip__TransferFailed();
     error CoinFlip__YouAreNotTheOne();
@@ -81,21 +82,29 @@ contract CoinFlip is VRFConsumerBaseV2Plus {
     }
 
     function guessHeads() public payable {
+        if (coinFlipState != CoinFlipState.OPEN) {
+            revert CoinFlip__StillCalculatingResults();
+        }
         if (msg.value < MINIMUM_WAGER) {
             revert CoinFlip__MinimumWagerNotMet(MINIMUM_WAGER, msg.value);
         }
         currentWagers[msg.sender].amount = msg.value;
         currentWagers[msg.sender].guess = Guesses.HEADS;
-        flipCoin();
+        coinFlipState = CoinFlipState.CALCULATING;
+        // flipCoin();
     }
 
     function guessTails() public payable {
+        if (coinFlipState != CoinFlipState.OPEN) {
+            revert CoinFlip__StillCalculatingResults();
+        }
         if (msg.value < MINIMUM_WAGER) {
             revert CoinFlip__MinimumWagerNotMet(MINIMUM_WAGER, msg.value);
         }
         currentWagers[msg.sender].amount = msg.value;
         currentWagers[msg.sender].guess = Guesses.TAILS;
-        flipCoin();
+        coinFlipState = CoinFlipState.CALCULATING;
+        // flipCoin();
     }
 
     function flipCoin() internal {
@@ -130,17 +139,19 @@ contract CoinFlip is VRFConsumerBaseV2Plus {
         }
     }
 
-    function chickenDinner() internal {
+    function chickenDinner() public {
         uint256 currentWager = currentWagers[msg.sender].amount;
         currentWagers[msg.sender].amount = 0;
         balances[msg.sender] = balances[msg.sender] + (currentWager * 2);
         totalPlayerBalances = totalPlayerBalances + (currentWager * 2);
+        coinFlipState = CoinFlipState.OPEN;
     }
 
-    function thanksForTheContributions() internal {
+    function thanksForTheContributions() public {
         uint256 currentWager = currentWagers[msg.sender].amount;
         currentWagers[msg.sender].amount = 0;
         balances[msg.sender] = balances[msg.sender] - currentWager;
+        coinFlipState = CoinFlipState.OPEN;
     }
 
     function userWithdraw() public {
