@@ -19,7 +19,6 @@ contract CoinFlip is VRFConsumerBaseV2Plus {
     struct Wager {
         uint256 amount;
         Guesses guess;
-        uint256 result;
     }
 
     address private immutable i_owner;
@@ -32,10 +31,11 @@ contract CoinFlip is VRFConsumerBaseV2Plus {
     uint32 callbackGasLimit;
     uint16 requestConfirmations;
     uint32 numWords;
-    uint256 result;
+    uint256 lastResult;
 
     mapping(address user => uint256 balance) private balances;
     mapping(address user => Wager wager) private currentWagers;
+    mapping(uint256 requestId => address user) private requestIdToUser;
 
     event Received(address sender, uint256 amount);
     event FallbackCalled(address sender, uint256 amount);
@@ -115,11 +115,12 @@ contract CoinFlip is VRFConsumerBaseV2Plus {
     function placeWager() public payable checkWager {
         currentWagers[msg.sender].amount = msg.value;
         coinFlipState = CoinFlipState.CALCULATING;
+        emit CoinFlipped(msg.sender, currentWagers[msg.sender].amount, currentWagers[msg.sender].guess);
         flipCoin();
     }
 
     function flipCoin() internal {
-        s_vrfCoordinator.requestRandomWords(
+        uint256 requestId = s_vrfCoordinator.requestRandomWords(
             VRFV2PlusClient.RandomWordsRequest({
                 keyHash: keyHash,
                 subId: subscriptionId,
@@ -129,26 +130,26 @@ contract CoinFlip is VRFConsumerBaseV2Plus {
                 extraArgs: VRFV2PlusClient._argsToBytes(VRFV2PlusClient.ExtraArgsV1({ nativePayment: false }))
             })
         );
-        emit CoinFlipped(msg.sender, currentWagers[msg.sender].amount, currentWagers[msg.sender].guess);
+
+        requestIdToUser[requestId] = msg.sender;
     }
 
-    function fulfillRandomWords(uint256 /* requestId */, uint256[] calldata randomWords) internal override {
-        uint256 _result = (randomWords[0] % 2) + 1;
-        result = _result;
+    function fulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal override {
+        lastResult = (randomWords[0] % 2) + 1;
+        handleResult(requestId, lastResult);
     }
 
-    function chickenDinner() public {
-        uint256 currentWager = currentWagers[msg.sender].amount;
-        currentWagers[msg.sender].amount = 0;
-        balances[msg.sender] = balances[msg.sender] + (currentWager * 2);
-        totalPlayerBalances = totalPlayerBalances + (currentWager * 2);
-        coinFlipState = CoinFlipState.OPEN;
-    }
+    function handleResult(uint256 requestId, uint256 result) public {
+        address user = requestIdToUser[requestId];
+        uint256 currentWager = currentWagers[user].amount;
+        Guesses currentGuess = currentWagers[user].guess;
+        currentWagers[user].amount = 0;
+        currentWagers[user].guess = Guesses.NONE;
 
-    function thanksForTheContributions() public {
-        uint256 currentWager = currentWagers[msg.sender].amount;
-        currentWagers[msg.sender].amount = 0;
-        balances[msg.sender] = balances[msg.sender] - currentWager;
+        if (uint256(currentGuess) == result) {
+            balances[user] = balances[user] + (currentWager * 2);
+            totalPlayerBalances = totalPlayerBalances + (currentWager * 2);
+        }
         coinFlipState = CoinFlipState.OPEN;
     }
 
@@ -179,19 +180,15 @@ contract CoinFlip is VRFConsumerBaseV2Plus {
         return i_owner;
     }
 
-    function getCoinFlipState() public view returns (CoinFlipState) {
-        return coinFlipState;
-    }
-
     function getBalance() public view returns (uint256) {
         return address(this).balance;
     }
 
-    function getUserBalance(address user) public view returns (uint256) {
-        return balances[user];
+    function getMinimumWager() public pure returns (uint256) {
+        return MINIMUM_WAGER;
     }
 
-    function getUserCurrentWager(address user) public view returns (uint256) {
+    function getUserCurrentWagerAmount(address user) public view returns (uint256) {
         return currentWagers[user].amount;
     }
 
@@ -199,15 +196,23 @@ contract CoinFlip is VRFConsumerBaseV2Plus {
         return currentWagers[user].guess;
     }
 
-    function getCurrentResult() public view returns (uint256) {
-        return result;
+    function getUserByRequestId(uint256 reqId) public view returns (address) {
+        return requestIdToUser[reqId];
     }
 
-    function getMinimumWager() public pure returns (uint256) {
-        return MINIMUM_WAGER;
+    function getUserBalance(address user) public view returns (uint256) {
+        return balances[user];
     }
 
     function getTotalPlayerBalances() public view returns (uint256) {
         return totalPlayerBalances;
+    }
+
+    function getCoinFlipState() public view returns (CoinFlipState) {
+        return coinFlipState;
+    }
+
+    function getLastResult() public view returns (uint256) {
+        return lastResult;
     }
 }
