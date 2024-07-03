@@ -19,6 +19,7 @@ contract CoinFlip is VRFConsumerBaseV2Plus {
     struct Wager {
         uint256 amount;
         Guesses guess;
+        uint256 result;
     }
 
     address private immutable i_owner;
@@ -31,13 +32,14 @@ contract CoinFlip is VRFConsumerBaseV2Plus {
     uint32 callbackGasLimit;
     uint16 requestConfirmations;
     uint32 numWords;
+    uint256 result;
 
     mapping(address user => uint256 balance) private balances;
     mapping(address user => Wager wager) private currentWagers;
 
     event Received(address sender, uint256 amount);
     event FallbackCalled(address sender, uint256 amount);
-    event CoinFlipped(address user, uint256 wager, Guesses guess);
+    event CoinFlipped(address indexed user, uint256 indexed wager, Guesses indexed guess);
 
     error CoinFlip__AmountMustBeGreaterThanZero();
     error CoinFlip__MinimumWagerNotMet(uint256 minimumWager, uint256 wager);
@@ -131,12 +133,8 @@ contract CoinFlip is VRFConsumerBaseV2Plus {
     }
 
     function fulfillRandomWords(uint256 /* requestId */, uint256[] calldata randomWords) internal override {
-        uint256 result = (randomWords[0] % 2) + 1;
-        if (uint256(currentWagers[msg.sender].guess) == result) {
-            chickenDinner();
-        } else {
-            thanksForTheContributions();
-        }
+        uint256 _result = (randomWords[0] % 2) + 1;
+        result = _result;
     }
 
     function chickenDinner() public {
@@ -199,6 +197,10 @@ contract CoinFlip is VRFConsumerBaseV2Plus {
 
     function getUserCurrentGuess(address user) public view returns (Guesses) {
         return currentWagers[user].guess;
+    }
+
+    function getCurrentResult() public view returns (uint256) {
+        return result;
     }
 
     function getMinimumWager() public pure returns (uint256) {

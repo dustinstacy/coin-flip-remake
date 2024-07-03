@@ -7,6 +7,7 @@ import { DeployCoinFlip } from 'script/DeployCoinFlip.s.sol';
 import { HelperConfig, CodeConstants } from 'script/HelperConfig.s.sol';
 import { LinkToken } from './mocks/LinkToken.sol';
 import { VRFCoordinatorV2_5Mock } from '@chainlink/contracts/vrf/mocks/VRFCoordinatorV2_5Mock.sol';
+import { Vm } from 'forge-std/Vm.sol';
 
 contract CoinFlipTest is Test, CodeConstants {
     CoinFlip coinFlip;
@@ -30,7 +31,7 @@ contract CoinFlipTest is Test, CodeConstants {
 
     event Received(address sender, uint256 amount);
     event FallbackCalled(address sender, uint256 amount);
-    event CoinFlipped(address user, uint256 wager, CoinFlip.Guesses guess);
+    event CoinFlipped(address indexed user, uint256 indexed wager, CoinFlip.Guesses indexed guess);
 
     modifier guessHeads() {
         vm.prank(USER);
@@ -214,6 +215,31 @@ contract CoinFlipTest is Test, CodeConstants {
 
         // Assert
         assert(coinFlipState == CoinFlip.CoinFlipState.CALCULATING);
+    }
+
+    function testPlaceWagerEmitsCoinFlippedEvent() public guessHeads {
+        vm.expectEmit(true, true, true, false, coinFlipAddress);
+        emit CoinFlipped(USER, minimumWager, coinFlip.getUserCurrentGuess(USER));
+        vm.prank(USER);
+        coinFlip.placeWager{ value: minimumWager }();
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                          FULFILL RANDOM WORDS
+    //////////////////////////////////////////////////////////////*/
+
+    function testFulfillRandomWordsResultIsAlwaysInProperRange() public guessHeads {
+        vm.prank(USER);
+        vm.recordLogs();
+        coinFlip.placeWager{ value: minimumWager }();
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        bytes32 requestId = entries[1].topics[3];
+
+        VRFCoordinatorV2_5Mock(vrfCoordinator).fulfillRandomWords(uint256(requestId), coinFlipAddress);
+
+        // Act / Assert
+        uint256 result = coinFlip.getCurrentResult();
+        assert(result == 1 || result == 2);
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////
