@@ -26,6 +26,7 @@ contract CoinFlip is VRFConsumerBaseV2Plus {
     address private immutable i_owner;
     uint256 private totalPlayerBalances;
     uint256 public constant MINIMUM_WAGER = 0.01 ether;
+    Wager[] public wagers;
 
     /* VRF State Variables */
     uint256 public subscriptionId;
@@ -109,7 +110,6 @@ contract CoinFlip is VRFConsumerBaseV2Plus {
             revert CoinFlip__MinimumWagerNotMet(MINIMUM_WAGER, msg.value);
         }
         currentWagers[msg.sender].amount = msg.value;
-        balances[msg.sender] = balances[msg.sender] + msg.value;
         uint256 requestId = s_vrfCoordinator.requestRandomWords(
             VRFV2PlusClient.RandomWordsRequest({
                 keyHash: keyHash,
@@ -131,12 +131,13 @@ contract CoinFlip is VRFConsumerBaseV2Plus {
         uint256 result = (randomWords[0] % 2) + 1;
         address user = requestIdToUser[requestId];
         currentWagers[user].result = result;
+        wagers.push(currentWagers[user]);
         uint256 currentWager = currentWagers[user].amount;
         Guesses currentGuess = currentWagers[user].guess;
         currentWagers[user].amount = 0;
         currentWagers[user].guess = Guesses.NONE;
         if (uint256(currentGuess) == result) {
-            balances[user] = balances[user] + currentWager;
+            balances[user] = balances[user] + (currentWager * 2);
             totalPlayerBalances = totalPlayerBalances + (currentWager * 2);
         }
     }
@@ -202,5 +203,9 @@ contract CoinFlip is VRFConsumerBaseV2Plus {
 
     function getTotalPlayerBalances() public view returns (uint256) {
         return totalPlayerBalances;
+    }
+
+    function getWager(uint256 index) public view returns (Wager memory) {
+        return wagers[index];
     }
 }

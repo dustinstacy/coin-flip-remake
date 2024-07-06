@@ -37,6 +37,7 @@ contract DeployCoinFlip is Script {
             config.requestConfirmations,
             config.numWords
         );
+        coinFlip.addFunds{ value: 0.05 ether }();
         vm.stopBroadcast();
 
         addConsumer.addConsumer(address(coinFlip), config.vrfCoordinator, config.subscriptionId, config.account);
