@@ -6,3 +6,5 @@ install :; forge install cryfrin/foundry-devops@0.2.2 --no-commit && forge insta
 
 deploy-sepolia : 
 	@forge script script/DeployCoinFlip.s.sol:DeployCoinFlip --rpc-url $(SEPOLIA_RPC_URL) --account myaccount --broadcast --verify --etherscan-api-key $(ETHERSCAN_API_KEY) -vvvv
+
+# forge verify-contract --show-standard-json-input --etherscan-api-key ETHERSCAN_API_KEY -- <ADDRESS> <PATH>

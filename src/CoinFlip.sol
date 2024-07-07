@@ -11,7 +11,6 @@ import { VRFV2PlusClient } from '@chainlink/contracts/vrf/dev/libraries/VRFV2Plu
 contract CoinFlip is VRFConsumerBaseV2Plus {
     /* Type Declarations */
     enum Guesses {
-        NONE,
         HEADS,
         TAILS
     }
@@ -50,7 +49,6 @@ contract CoinFlip is VRFConsumerBaseV2Plus {
     error CoinFlip__TransferFailed();
     error CoinFlip__YouAreNotTheOwner();
     error CoinFlip__NotEnoughFundsAvailable();
-    error CoinFlip__PleaseMakeAGuessFirst();
 
     /**
      * @dev Constructor initializes the contract with Chainlink VRF parameters.
@@ -94,22 +92,14 @@ contract CoinFlip is VRFConsumerBaseV2Plus {
         }
     }
 
-    function guessHeads() public {
-        currentWagers[msg.sender].guess = Guesses.HEADS;
-    }
-
-    function guessTails() public {
-        currentWagers[msg.sender].guess = Guesses.TAILS;
-    }
-
-    function placeWager() public payable {
-        if (currentWagers[msg.sender].guess == Guesses.NONE) {
-            revert CoinFlip__PleaseMakeAGuessFirst();
-        }
+    function placeWager(Guesses guess) public payable {
         if (msg.value < MINIMUM_WAGER) {
             revert CoinFlip__MinimumWagerNotMet(MINIMUM_WAGER, msg.value);
         }
-        currentWagers[msg.sender].amount = msg.value;
+        // gas report user variable vs msg.sender
+        address user = msg.sender;
+        currentWagers[user].guess = guess;
+        currentWagers[user].amount = msg.value;
         uint256 requestId = s_vrfCoordinator.requestRandomWords(
             VRFV2PlusClient.RandomWordsRequest({
                 keyHash: keyHash,
@@ -120,25 +110,24 @@ contract CoinFlip is VRFConsumerBaseV2Plus {
                 extraArgs: VRFV2PlusClient._argsToBytes(VRFV2PlusClient.ExtraArgsV1({ nativePayment: false }))
             })
         );
-        emit CoinFlipped(msg.sender, currentWagers[msg.sender].amount, currentWagers[msg.sender].guess);
-        currentWagers[msg.sender].requestId = requestId;
-        requestIdToUser[requestId] = msg.sender;
+        emit CoinFlipped(user, currentWagers[user].amount, currentWagers[user].guess);
+        currentWagers[user].requestId = requestId;
+        requestIdToUser[requestId] = user;
     }
 
-    /// @dev Adds plus 1 to result since value needs to equal 1 or 2 based on
-    /// the index of HEADS and TAILS inside enum Guesses
     function fulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal override {
-        uint256 result = (randomWords[0] % 2) + 1;
+        uint256 result = randomWords[0] % 2;
         address user = requestIdToUser[requestId];
         currentWagers[user].result = result;
         wagers.push(currentWagers[user]);
         uint256 currentWager = currentWagers[user].amount;
         Guesses currentGuess = currentWagers[user].guess;
         currentWagers[user].amount = 0;
-        currentWagers[user].guess = Guesses.NONE;
+
         if (uint256(currentGuess) == result) {
-            balances[user] = balances[user] + (currentWager * 2);
-            totalPlayerBalances = totalPlayerBalances + (currentWager * 2);
+            uint256 payout = currentWager * 2;
+            balances[user] = balances[user] + payout;
+            totalPlayerBalances = totalPlayerBalances + payout;
         }
     }
 
@@ -152,6 +141,7 @@ contract CoinFlip is VRFConsumerBaseV2Plus {
         if (!success) {
             revert CoinFlip__TransferFailed();
         }
+        totalPlayerBalances = totalPlayerBalances - balance;
     }
 
     function ownerWithdraw(uint256 amountRequested) public {
